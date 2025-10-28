@@ -1,48 +1,55 @@
 """
 Database Schemas
 
-Define your MongoDB collection schemas here using Pydantic models.
-These schemas are used for data validation in your application.
-
+Define MongoDB collection schemas using Pydantic models.
 Each Pydantic model represents a collection in your database.
 Model name is converted to lowercase for the collection name:
-- User -> "user" collection
-- Product -> "product" collection
-- BlogPost -> "blogs" collection
+- Client -> "client"
+- Invoice -> "invoice"
 """
 
-from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Literal, Optional
+from pydantic import BaseModel, Field, EmailStr
 
-# Example schemas (replace with your own):
 
+class Client(BaseModel):
+    """Clients collection schema"""
+    name: str = Field(..., description="Client full name or company name", min_length=2, max_length=120)
+    email: Optional[EmailStr] = Field(None, description="Primary contact email")
+    phone: Optional[str] = Field(None, description="Contact phone number")
+    company: Optional[str] = Field(None, description="Company name if individual contact")
+    address: Optional[str] = Field(None, description="Mailing address")
+    notes: Optional[str] = Field(None, description="Internal notes about the client")
+    status: Literal["active", "inactive", "prospect"] = Field("active", description="Lifecycle status")
+
+
+class InvoiceItem(BaseModel):
+    description: str = Field(..., min_length=1, max_length=200)
+    quantity: float = Field(1, ge=0)
+    unit_price: float = Field(..., ge=0)
+
+
+class Invoice(BaseModel):
+    """Invoices collection schema"""
+    invoice_number: Optional[str] = Field(None, description="Human-friendly invoice number, e.g., INV-0001")
+    client_id: Optional[str] = Field(None, description="ID of the client this invoice belongs to")
+    issue_date: Optional[str] = Field(None, description="ISO date string when invoice was issued")
+    due_date: Optional[str] = Field(None, description="ISO date string when invoice is due")
+    items: list[InvoiceItem] = Field(default_factory=list)
+    currency: Literal["USD", "EUR", "GBP", "INR", "JPY", "AUD", "CAD"] = Field("USD")
+    status: Literal["draft", "sent", "paid", "overdue", "cancelled"] = Field("draft")
+    notes: Optional[str] = Field(None, description="Public notes shown on invoice")
+    terms: Optional[str] = Field(None, description="Payment terms")
+
+
+# Example additional schemas kept minimal for reference (not used by routes)
 class User(BaseModel):
-    """
-    Users collection schema
-    Collection name: "user" (lowercase of class name)
-    """
-    name: str = Field(..., description="Full name")
-    email: str = Field(..., description="Email address")
-    address: str = Field(..., description="Address")
-    age: Optional[int] = Field(None, ge=0, le=120, description="Age in years")
-    is_active: bool = Field(True, description="Whether user is active")
+    name: str
+    email: EmailStr
+    is_active: bool = True
+
 
 class Product(BaseModel):
-    """
-    Products collection schema
-    Collection name: "product" (lowercase of class name)
-    """
-    title: str = Field(..., description="Product title")
-    description: Optional[str] = Field(None, description="Product description")
-    price: float = Field(..., ge=0, description="Price in dollars")
-    category: str = Field(..., description="Product category")
-    in_stock: bool = Field(True, description="Whether product is in stock")
-
-# Add your own schemas here:
-# --------------------------------------------------
-
-# Note: The Flames database viewer will automatically:
-# 1. Read these schemas from GET /schema endpoint
-# 2. Use them for document validation when creating/editing
-# 3. Handle all database operations (CRUD) directly
-# 4. You don't need to create any database endpoints!
+    title: str
+    price: float
+    in_stock: bool = True
